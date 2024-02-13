@@ -27,25 +27,9 @@ then
 fi
 
 #
-# from: COUNTRY NETWORK/MASK
-# to:   COUNTRY MASK NETWORK[0] NETWORK[1] NETWORK[2] NETWORK[3]
+# cidr.txt --> country-db.bin
 #
-# sort by NETWORK
-#
-< cidr.txt tr '/' ' ' | tr '.' ' ' | sort -k2,2n -k3,3n -k4,4n -k5,5n \
-| awk '{print $1,$6,$2,$3,$4,$5}' > cidr-sorted.txt
-
-#
-# from text to binary
-#
-# format)
-#    4byte network
-#    4byte broadcast
-#    1byte mask
-#    1byte padding
-#    2byte country
-#
-/usr/bin/python3 txt2bin.py -i cidr-sorted.txt -o country-db.bin
+bash mkdb.sh cidr.txt country-db.bin
 
 #
 # get data (sample)
