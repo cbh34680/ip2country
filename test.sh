@@ -14,7 +14,7 @@ set -eux
 if [ -f cidr.txt ]
 then
   statopt='-c %Y'
-  [ $(uname) = 'Darwin' ] && statopt='-f %z'
+  [ $(uname) = 'Darwin' ] && statopt='-f %m'
   cidrmdt=$(stat $statopt cidr.txt)
 
   [ $(( $(date +'%s') - $cidrmdt )) -gt 604800 ] && rm cidr.txt
