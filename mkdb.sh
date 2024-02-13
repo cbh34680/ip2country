@@ -1,10 +1,15 @@
 #!/bin/bash
 
+readlink_f(){ perl -MCwd -e 'print Cwd::abs_path shift' "$1";}
+
+unalias -a
 set -eu
 
 : ${2?"Usage: $0 cidr.txt output-path"}
 
 [ -f $1 ] || { echo $1: file not found; exit 1; }
+
+thisdir="$(dirname "$(readlink_f "${BASH_SOURCE:-$0}")")"
 
 tmpf=$(mktemp)
 trap "rm -f $tmpf" EXIT
@@ -28,7 +33,7 @@ trap "rm -f $tmpf" EXIT
 #    1byte padding
 #    2byte country
 #
-/usr/bin/python3 txt2bin.py -i $tmpf -o $2
+/usr/bin/python3 ${thisdir}/txt2bin.py -i $tmpf -o $2
 
 exit 0
 
