@@ -46,7 +46,8 @@ int main(int argc, char** argv)
 
 	uint8_t addr_u8s[4];
 
-	if (sscanf(argv[2], "%hhu.%hhu.%hhu.%hhu", &addr_u8s[0], &addr_u8s[1], &addr_u8s[2], &addr_u8s[3]) != 4)
+	if (sscanf(argv[2], "%hhu.%hhu.%hhu.%hhu",
+			&addr_u8s[0], &addr_u8s[1], &addr_u8s[2], &addr_u8s[3]) != 4)
 	{
 		ERRMSG("ERR: parse %s\n", argv[2]);
 		goto LABEL_ERR;
@@ -91,7 +92,6 @@ int main(int argc, char** argv)
 
 	DEBUG("INFO: search_data() return %d\n", f_result);
 
-
 LABEL_ERR:
 
 	if (fp)
@@ -118,7 +118,8 @@ int search_data(FILE* fp, uint32_t addr, size_t left, size_t remaining, int* pca
 {
 	int f_result = 1;
 
-	DEBUG("\nINFO: search_data(%p, addr=0x%x left=%zu remaining=%zu called=%d)\n", fp, addr, left, remaining, *pcalled);
+	DEBUG("\nINFO: search_data(%p, addr=0x%x left=%zu remaining=%zu called=%d)\n",
+		fp, addr, left, remaining, *pcalled);
 
 	print_addr("search", addr);
 
@@ -162,7 +163,9 @@ int search_data(FILE* fp, uint32_t addr, size_t left, size_t remaining, int* pca
 	rec.broadcast = ntohl(rec.broadcast);
 
 
-	DEBUG("INFO: rec [network=0x%x broadcast=0x%x mask=%d country='%.2s']\n", rec.network, rec.broadcast, rec.mask ,rec.country);
+	DEBUG("INFO: rec [network=0x%x broadcast=0x%x mask=%d country='%.2s']\n",
+		rec.network, rec.broadcast, rec.mask ,rec.country);
+
 	print_addr("network", rec.network);
 	print_addr("broadcast", rec.broadcast);
 
