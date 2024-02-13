@@ -142,19 +142,19 @@ int search_data(FILE* fp, uint32_t addr, size_t left, size_t remaining, int* pca
 	size_t center = left + (remaining / 2);
 	off_t offset = center * sizeof(cidr_t);
 
-	DEBUG("INFO: center=%zu offset=%jd\n", center, offset);
+	DEBUG("INFO: center=%zu offset=%jd\n", center, (intmax_t)offset);
 
 	cidr_t rec;
 
 	if (fseeko(fp, offset, SEEK_SET) != 0)
 	{
-		ERRMSG("ERR: seek off=%jd\n", offset);
+		ERRMSG("ERR: seek off=%jd\n", (intmax_t)offset);
 		goto LABEL_EXIT;
 	}
 
 	if (fread(&rec, sizeof(rec), 1, fp) != 1)
 	{
-		ERRMSG("ERR: read off=%jd\n", ftello(fp));
+		ERRMSG("ERR: read off=%jd\n", (intmax_t)ftello(fp));
 		goto LABEL_EXIT;
 	}
 
