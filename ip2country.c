@@ -40,7 +40,7 @@ int main(int argc, char** argv)
 
 	if (argc != 3)
 	{
-		ERRMSG("Usage: %s cidr.bin ip-address\n", argv[0]);
+		ERRMSG("Usage: %s country-db.bin ip-address\n", argv[0]);
 		goto LABEL_ERR;
 	}
 

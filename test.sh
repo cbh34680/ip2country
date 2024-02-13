@@ -1,9 +1,10 @@
 #!/bin/bash
 
-unalias -a
-cd $(dirname $(readlink -f "${BASH_SOURCE:-$0}"))
+readlink_f(){ perl -MCwd -e 'print Cwd::abs_path shift' "$1";}
 
-# readlink_f(){ perl -MCwd -e 'print Cwd::abs_path shift' "$1";}
+unalias -a
+#cd $(dirname $(readlink -f "${BASH_SOURCE:-$0}"))
+cd "$(dirname "$(readlink_f "${BASH_SOURCE:-$0}")")"
 
 set -eux
 
@@ -12,10 +13,11 @@ set -eux
 #
 if [ -f cidr.txt ]
 then
-  if [ $(( $(date +'%s') - $(stat -c '%Y' cidr.txt) )) -gt 604800 ]
-  then
-    rm cidr.txt
-  fi
+  statopt='-c %Y'
+  [ $(uname) = 'Darwin' ] && statopt='-f %z'
+  cidrmdt=$(stat $statopt cidr.txt)
+
+  [ $(( $(date +'%s') - $cidrmdt )) -gt 604800 ] && rm cidr.txt
 fi
 
 if [ ! -f cidr.txt ]
@@ -43,7 +45,7 @@ fi
 #    1byte padding
 #    2byte country
 #
-python3 txt2bin.py -i cidr-sorted.txt -o cidr.bin
+/usr/bin/python3 txt2bin.py -i cidr-sorted.txt -o country-db.bin
 
 #
 # get data (sample)
@@ -67,13 +69,13 @@ python3 txt2bin.py -i cidr-sorted.txt -o cidr.bin
 # get country for each address 
 #
 cc -Wall -O2 -o ip2country ip2country.c
-strip ip2country
+/usr/bin/strip ip2country
 
 set +x
 
 while read addr
 do
-  code=$(./ip2country cidr.bin $addr 2>/dev/null)
+  code=$(./ip2country country-db.bin $addr 2>/dev/null)
   rc=$?
 
   echo "${addr} ${code} ${rc}"
