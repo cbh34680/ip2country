@@ -30,7 +30,13 @@ typedef struct cdbrec_st
 cdbrec_t;
 
 static void print_addr(const char* k, uint32_t v);
-static int search_data(FILE* fp, uint32_t addr, size_t left, size_t remaining, int* pcalled);
+
+static int file_bsearch(
+	FILE* fp, size_t recsize, size_t left, size_t remaining,
+	int (*cmpfunc)(const unsigned char*, size_t, const void*),
+	const void*, int* pcalled);
+
+static int cmp_cdbrec(const unsigned char* rec, size_t recsize, const void* param);
 
 int main(int argc, char** argv)
 {
@@ -52,6 +58,18 @@ int main(int argc, char** argv)
 		ERRMSG("ERR: parse %s\n", argv[2]);
 		goto LABEL_ERR;
 	}
+
+/*
+	for (int i=0; i<(sizeof(addr_u8s) / sizeof(addr_u8s[0])); i++)
+	{
+		int n = (int)addr_u8s[i];
+		if (n < 0 || 255 < n)
+		{
+			ERRMSG("ERR: addr[%d] is %d\n", i, n);
+			goto LABEL_ERR;
+		}
+	}
+*/
 
 	uint32_t addr = ntohl(*((uint32_t*)addr_u8s));
 	DEBUG("INFO: input file=%s addr=%u(0x%x)\n", argv[1], addr, addr);
@@ -88,9 +106,9 @@ int main(int argc, char** argv)
 	DEBUG("INFO: sizeof(cdbrec_t)=%zu expected=%d\n", sizeof(cdbrec_t), expected);
 
 	int called = 0;
-	f_result = search_data(fp, addr, 0, remaining, &called);
+	f_result = file_bsearch(fp, sizeof(cdbrec_t), 0, remaining, cmp_cdbrec, &addr, &called);
 
-	DEBUG("INFO: search_data() return %d\n", f_result);
+	DEBUG("INFO: file_bsearch() return %d\n", f_result);
 
 LABEL_ERR:
 
@@ -111,17 +129,21 @@ void print_addr(const char* k, uint32_t v)
 	DEBUG("%u.%u.%u.%u\n", (v>>24)&0xff, (v>>16)&0xff, (v>>8)&0xff, v&0xff);
 }
 
+
 // for buf
 #define MAX_CALL	(1000)
 
-int search_data(FILE* fp, uint32_t addr, size_t left, size_t remaining, int* pcalled)
+int file_bsearch(
+	FILE* fp, size_t recsize, size_t left, size_t remaining,
+	int (*cmpfunc)(const unsigned char*, size_t, const void*),
+	const void* param, int* pcalled)
 {
 	int f_result = 1;
 
-	DEBUG("\nINFO: search_data(%p, addr=0x%x left=%zu remaining=%zu called=%d)\n",
-		fp, addr, left, remaining, *pcalled);
+	DEBUG("\nINFO: file_bsearch(%p, recsize=%zu left=%zu remaining=%zu called=%d)\n",
+		fp, recsize, left, remaining, *pcalled);
 
-	print_addr("search", addr);
+	unsigned char rec[recsize];
 
 #if defined(MAX_CALL)
 	DEBUG("INFO: called=%d\n", *pcalled);
@@ -140,77 +162,96 @@ int search_data(FILE* fp, uint32_t addr, size_t left, size_t remaining, int* pca
 		goto LABEL_EXIT;
 	}
 
-	size_t center = left + (remaining / 2);
-	off_t offset = center * sizeof(cdbrec_t);
+	const size_t center = left + (remaining / 2);
+	const off_t offset = center * recsize;
 
 	DEBUG("INFO: center=%zu offset=%jd\n", center, (intmax_t)offset);
 
-	cdbrec_t cdbrec;
 	if (fseeko(fp, offset, SEEK_SET) != 0)
 	{
 		ERRMSG("ERR: seek off=%jd\n", (intmax_t)offset);
 		goto LABEL_EXIT;
 	}
 
-	if (fread(&cdbrec, sizeof(cdbrec), 1, fp) != 1)
+	if (fread(&rec, recsize, 1, fp) != 1)
 	{
 		ERRMSG("ERR: read off=%jd\n", (intmax_t)ftello(fp));
 		goto LABEL_EXIT;
 	}
 
-	cdbrec.network = ntohl(cdbrec.network);
-	cdbrec.broadcast = ntohl(cdbrec.broadcast);
+	size_t next_left, next_remaining;
 
-	DEBUG("INFO: cdbrec [network=0x%x broadcast=0x%x mask=%d country='%.2s']\n",
-		cdbrec.network, cdbrec.broadcast, cdbrec.mask ,cdbrec.code);
-
-	print_addr("network", cdbrec.network);
-	print_addr("broadcast", cdbrec.broadcast);
-
-	if (cdbrec.network <= addr && addr <= cdbrec.broadcast)
+	switch (cmpfunc(rec, recsize, param))
 	{
-		printf("%.2s\n", cdbrec.code);
-		f_result = 0;
-	}
-	else
-	{
-		size_t next_left, next_remaining;
+		case 0:
+		{
+			f_result = 0;
 
-		if (addr < cdbrec.network)
+			goto LABEL_EXIT;
+		}
+		case -1:
 		{
 			DEBUG("INFO: next direction LEFT\n");
 
 			next_left = left;
 			next_remaining = center - left;
+
+			break;
 		}
-		else if (cdbrec.broadcast < addr)
+		case 1:
 		{
 			DEBUG("INFO: next direction RIGHT\n");
 
 			next_left = center + 1;
 			next_remaining = (left + remaining) - next_left;
+
+			break;
 		}
-		else
-		{
-			ERRMSG("ERR: illegal range\n");
-			goto LABEL_EXIT;
-		}
+	}
 
-		DEBUG("INFO: next [left=%zu remaining=%zd]\n", next_left, (ssize_t)next_remaining);
+	DEBUG("INFO: next [left=%zu remaining=%zd]\n", next_left, (ssize_t)next_remaining);
 
-		if ((ssize_t)next_remaining <= 0)
-		{
-			ERRMSG("WARN: no data(next)\n");
-			f_result = 2;
+	if ((ssize_t)next_remaining > 0)
+	{
+		f_result = file_bsearch(fp, recsize, next_left, next_remaining, cmpfunc, param, pcalled);
+	}
+	else
+	{
+		ERRMSG("WARN: no data(next)\n");
 
-			goto LABEL_EXIT;
-		}
-
-		f_result = search_data(fp, addr, next_left, next_remaining, pcalled);
+		f_result = 2;
 	}
 
 LABEL_EXIT:
 
 	return f_result;
+}
+
+int cmp_cdbrec(const unsigned char* rec, size_t recsize, const void* param)
+{
+	uint32_t addr = *((uint32_t*)param);
+	const cdbrec_t* cdbrec = (cdbrec_t*)rec;
+
+	uint32_t network = ntohl(cdbrec->network);
+	uint32_t broadcast = ntohl(cdbrec->broadcast);
+
+	DEBUG("INFO: cdbrec [network=0x%x broadcast=0x%x mask=%d country='%.2s']\n",
+		network, broadcast, cdbrec->mask ,cdbrec->code);
+
+	print_addr("network", network);
+	print_addr("broadcast", broadcast);
+
+	if (addr < network)
+	{
+		return -1;
+	}
+	else if (broadcast < addr)
+	{
+		return 1;
+	}
+
+	printf("%.2s\n", cdbrec->code);
+
+	return 0;
 }
 
