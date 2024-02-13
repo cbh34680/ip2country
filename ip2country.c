@@ -16,18 +16,18 @@
 */
 
 /*
-cc -Wall -O0 -o ip2country -g ip2country.c && ./ip2country cidr.bin 193.34.185.1 ; rc=$?; echo; echo result is $rc
+cc -Wall -O0 -o ip2country -g ip2country.c && ./ip2country country-db.bin 8.8.8.8 ; rc=$?; echo; echo result is $rc
 */
 
-typedef struct cidr_st
+typedef struct cdbrec_st
 {
 	uint32_t network;
 	uint32_t broadcast;
 	uint8_t mask;
 	char x;
-	char country[2];
+	char code[2];
 }
-cidr_t;
+cdbrec_t;
 
 static void print_addr(const char* k, uint32_t v);
 static int search_data(FILE* fp, uint32_t addr, size_t left, size_t remaining, int* pcalled);
@@ -76,8 +76,8 @@ int main(int argc, char** argv)
 		goto LABEL_ERR;
 	}
 
-	size_t remaining = stbuf.st_size / sizeof(cidr_t);
-	int expected = remaining * sizeof(cidr_t);
+	size_t remaining = stbuf.st_size / sizeof(cdbrec_t);
+	int expected = remaining * sizeof(cdbrec_t);
 
 	if (stbuf.st_size != expected)
 	{
@@ -85,7 +85,7 @@ int main(int argc, char** argv)
 		goto LABEL_ERR;
 	}
 
-	DEBUG("INFO: sizeof(cidr_t)=%zu expected=%d\n", sizeof(cidr_t), expected);
+	DEBUG("INFO: sizeof(cdbrec_t)=%zu expected=%d\n", sizeof(cdbrec_t), expected);
 
 	int called = 0;
 	f_result = search_data(fp, addr, 0, remaining, &called);
@@ -141,51 +141,49 @@ int search_data(FILE* fp, uint32_t addr, size_t left, size_t remaining, int* pca
 	}
 
 	size_t center = left + (remaining / 2);
-	off_t offset = center * sizeof(cidr_t);
+	off_t offset = center * sizeof(cdbrec_t);
 
 	DEBUG("INFO: center=%zu offset=%jd\n", center, (intmax_t)offset);
 
-	cidr_t rec;
-
+	cdbrec_t cdbrec;
 	if (fseeko(fp, offset, SEEK_SET) != 0)
 	{
 		ERRMSG("ERR: seek off=%jd\n", (intmax_t)offset);
 		goto LABEL_EXIT;
 	}
 
-	if (fread(&rec, sizeof(rec), 1, fp) != 1)
+	if (fread(&cdbrec, sizeof(cdbrec), 1, fp) != 1)
 	{
 		ERRMSG("ERR: read off=%jd\n", (intmax_t)ftello(fp));
 		goto LABEL_EXIT;
 	}
 
-	rec.network = ntohl(rec.network);
-	rec.broadcast = ntohl(rec.broadcast);
+	cdbrec.network = ntohl(cdbrec.network);
+	cdbrec.broadcast = ntohl(cdbrec.broadcast);
 
+	DEBUG("INFO: cdbrec [network=0x%x broadcast=0x%x mask=%d country='%.2s']\n",
+		cdbrec.network, cdbrec.broadcast, cdbrec.mask ,cdbrec.code);
 
-	DEBUG("INFO: rec [network=0x%x broadcast=0x%x mask=%d country='%.2s']\n",
-		rec.network, rec.broadcast, rec.mask ,rec.country);
+	print_addr("network", cdbrec.network);
+	print_addr("broadcast", cdbrec.broadcast);
 
-	print_addr("network", rec.network);
-	print_addr("broadcast", rec.broadcast);
-
-	if (rec.network <= addr && addr <= rec.broadcast)
+	if (cdbrec.network <= addr && addr <= cdbrec.broadcast)
 	{
-		printf("%.2s\n", rec.country);
+		printf("%.2s\n", cdbrec.code);
 		f_result = 0;
 	}
 	else
 	{
 		size_t next_left, next_remaining;
 
-		if (addr < rec.network)
+		if (addr < cdbrec.network)
 		{
 			DEBUG("INFO: next direction LEFT\n");
 
 			next_left = left;
 			next_remaining = center - left;
 		}
-		else if (rec.broadcast < addr)
+		else if (cdbrec.broadcast < addr)
 		{
 			DEBUG("INFO: next direction RIGHT\n");
 
