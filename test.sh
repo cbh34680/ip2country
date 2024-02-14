@@ -52,7 +52,7 @@ bash mkdb.sh cidr.txt country-db.bin
 #
 # get country for each address 
 #
-cc -Wall -O2 -o ip2country ip2country.c
+cc -Wall -O2 -o ip2country main.c fbsrch.c
 /usr/bin/strip ip2country
 
 set +x
