@@ -24,9 +24,11 @@ if [ ! -f $outf ]
 then
   curl -sSL -o $tmpgzf http://nami.jp/ipv4bycc/cidr.txt.gz
   gzip -dc $tmpgzf > $outf
+
+  [ $(< $outf wc -l) -lt 100000 ] && rm $outf
 fi
 
-test $(< $outf wc -l) -gt 100000
+test -f $outf
 
 exit 0
 
