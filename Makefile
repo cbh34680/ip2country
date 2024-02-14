@@ -11,6 +11,9 @@ country-db.bin: cidr.txt
 cidr.txt:
 	/bin/bash getcidr.sh cidr.txt
 
+test: all
+	./ip2country country-db.bin 8.8.8.8
+
 ls:
 	ls -l ip2country country-db.bin cidr.txt; wc -l cidr.txt
 
