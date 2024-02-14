@@ -7,7 +7,7 @@ set -eu
 
 : ${2?"Usage: $0 cidr.txt output-path"}
 
-[ -f $1 ] || { echo $1: file not found; exit 1; }
+test -f $1 || { echo $1: file not found; exit 1; }
 
 thisdir="$(dirname "$(readlink_f "${BASH_SOURCE:-$0}")")"
 
