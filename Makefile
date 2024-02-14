@@ -8,9 +8,6 @@ ip2country: main.c fbsrch.c fbsrch.h
 country-db.bin: cidr.txt
 	/bin/bash mkdb.sh cidr.txt country-db.bin
 
-cidr.txt:
-	/bin/bash getcidr.sh cidr.txt
-
 test: all
 	./ip2country country-db.bin 8.8.8.8
 
