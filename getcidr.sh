@@ -5,7 +5,7 @@ set -eux
 : ${1?"Usage: $0 output-path"}
 outf=$1
 
-tmpgzf=$(mktemp --suffix='.gz')
+tmpgzf=$(mktemp)
 trap "rm -f $tmpgzf" EXIT
 
 #
