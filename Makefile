@@ -16,4 +16,5 @@ ls:
 
 clean:
 	rm -f ip2country country-db.bin cidr.txt
+	rm -rf ip2country.dSYM/
 
